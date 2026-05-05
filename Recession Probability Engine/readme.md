@@ -12,4 +12,4 @@ An ML-driven system designed to forecast U.S. economic recessions with a focus o
 Unlike traditional models that focus on consumer debt, this engine utilizes credit spreads and CapEx intent to identify "atypical" corporate-led contractions like the 2001 Dot-Com bust.
 
 ### Documentation
-👉 [**Download Full Technical White Paper (PDF)**](./Recession_Probability_Engine.pdf)
+👉 [**Download Full Technical White Paper (PDF)**](./Recession Probability Engine.pdf)
