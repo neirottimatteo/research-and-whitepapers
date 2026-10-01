@@ -1,0 +1,1855 @@
+<!DOCTYPE html><html lang="en"><head>
+
+
+
+
+
+
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recession Probability Engine v4 — A Machine Learning Approach to U.S. Business Cycle Forecasting</title>
+<template id="__bundler_thumbnail" data-bg-color="#f6f3ec">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#f6f3ec"/>
+    <g transform="translate(360, 280)">
+      <text x="0" y="0" font-family="Georgia, serif" font-size="180" font-weight="400" fill="#1a1a1a" letter-spacing="-6">RPE</text>
+      <text x="0" y="60" font-family="Georgia, serif" font-size="34" font-style="italic" fill="#6b6b6b">Recession Probability Engine</text>
+      <line x1="0" y1="100" x2="420" y2="100" stroke="#3b5b8c" stroke-width="3"/>
+      <text x="0" y="142" font-family="Inter, sans-serif" font-size="20" fill="#3b5b8c" letter-spacing="4">VERSION 3.0 · AUGUST 2026</text>
+    </g>
+  </svg>
+</template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f3ec;
+    --paper: #fbf9f3;
+    --ink: #1a1a1a;
+    --ink-soft: #2c2c2c;
+    --muted: #6b6b6b;
+    --rule: #d9d3c4;
+    --rule-soft: #ebe5d4;
+    --accent: oklch(0.42 0.10 250);
+    --accent-soft: oklch(0.55 0.10 250);
+    --accent-bg: oklch(0.93 0.025 250);
+    --warn: oklch(0.55 0.14 25);
+    --warn-bg: oklch(0.94 0.03 25);
+    --good: oklch(0.50 0.10 155);
+    --serif: "Source Serif 4", Georgia, serif;
+    --sans: "Inter", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    font-feature-settings: "ss01", "onum";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Page frame ---------- */
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-left: 1px solid var(--rule-soft);
+    border-right: 1px solid var(--rule-soft);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead {
+    padding: 56px 96px 40px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 64px;
+  }
+  .meta-row .dot {
+    width: 6px; height: 6px;
+    background: var(--accent-soft);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 10px;
+    vertical-align: middle;
+  }
+  h1.title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 18px;
+    max-width: 16ch;
+    color: var(--ink);
+  }
+  h1.title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .subtitle {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    margin: 0 0 40px;
+    max-width: 38ch;
+    font-weight: 300;
+  }
+  .byline {
+    display: flex;
+    gap: 48px;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding-top: 24px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .byline .label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .byline .value {
+    font-weight: 500;
+  }
+
+  /* ---------- Headline metrics strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--rule);
+  }
+  .stat {
+    padding: 32px 28px;
+    border-right: 1px solid var(--rule-soft);
+  }
+  .stat:last-child { border-right: none; }
+  .stat .num {
+    font-family: var(--serif);
+    font-size: 44px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .stat .unit {
+    font-size: 18px;
+    color: var(--muted);
+    font-style: italic;
+    font-weight: 300;
+  }
+  .stat .label {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+
+  /* ---------- Body container ---------- */
+  .body {
+    padding: 64px 96px 80px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .section {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 48px;
+    padding: 56px 0;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .section:first-of-type { border-top: none; padding-top: 24px; }
+  .section-tag {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 6px;
+  }
+  .section-tag .num {
+    display: block;
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 300;
+    color: var(--accent);
+    letter-spacing: 0;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .section-body { max-width: 680px; }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+    line-height: 1.15;
+    color: var(--ink);
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 36px 0 12px;
+  }
+  h4 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 19px;
+    margin: 28px 0 8px;
+    color: var(--ink);
+  }
+  p { margin: 0 0 18px; }
+  p + p { text-indent: 0; }
+
+  .lede {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    font-weight: 300;
+  }
+  .lede::first-letter {
+    font-family: var(--serif);
+    font-size: 76px;
+    font-weight: 400;
+    float: left;
+    line-height: 0.85;
+    margin: 6px 10px 0 0;
+    color: var(--accent);
+  }
+
+  ol.numbered {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+    counter-reset: chal;
+  }
+  ol.numbered li {
+    counter-increment: chal;
+    padding: 16px 0 16px 56px;
+    border-top: 1px solid var(--rule-soft);
+    position: relative;
+  }
+  ol.numbered li:last-child { border-bottom: 1px solid var(--rule-soft); }
+  ol.numbered li::before {
+    content: counter(chal, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+  ol.numbered li strong {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  ul.plain {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+  }
+  ul.plain li {
+    padding: 10px 0 10px 22px;
+    position: relative;
+    border-top: 1px solid var(--rule-soft);
+  }
+  ul.plain li:last-child { border-bottom: 1px solid var(--rule-soft); }
+  ul.plain li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 22px;
+    width: 8px; height: 1px;
+    background: var(--accent);
+  }
+
+  /* ---------- Tables ---------- */
+  .tbl-wrap {
+    margin: 28px 0 32px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+  th, td {
+    padding: 11px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  th {
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 9px;
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.highlight td {
+    background: var(--accent-bg);
+    font-weight: 600;
+    color: var(--ink);
+  }
+  tr.total td {
+    border-top: 1px solid var(--ink);
+    font-weight: 600;
+    background: #f0ebda;
+  }
+  .tbl-caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .tbl-foot {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Figures ---------- */
+  figure.bleed {
+    grid-column: 1 / -1;
+    margin: 32px 0;
+    padding: 0;
+    background: #ffffff;
+    border: 1px solid var(--rule);
+  }
+  figure.bleed .img-wrap {
+    background: #ffffff;
+    padding: 24px 28px;
+  }
+  figure.bleed img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  figure .figcap {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 24px;
+    padding: 18px 28px 22px;
+    border-top: 1px solid var(--rule-soft);
+    background: #faf8f1;
+  }
+  figure .figcap .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+  figure .figcap .text {
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  figure .figcap .text em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 12px;
+    color: var(--muted);
+    display: block;
+    margin-top: 6px;
+  }
+
+  /* full-bleed figure for full-history result */
+  .hero-figure {
+    grid-column: 1 / -1;
+    margin: 56px -96px;
+    padding: 0;
+    background: #fff;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-figure .img-wrap { padding: 32px 96px; background: #fff; }
+  .hero-figure img { width: 100%; display: block; }
+  .hero-figure .figcap {
+    background: var(--paper);
+    padding: 18px 96px 24px;
+    border-top: 1px solid var(--rule-soft);
+    grid-template-columns: 120px 1fr;
+  }
+
+  /* 2x2 fingerprint grid */
+  .fingerprint-grid {
+    grid-column: 1 / -1;
+    margin: 36px 0 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .fp-card {
+    background: #fff;
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+  .fp-card .fp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--paper);
+  }
+  .fp-card .fp-date {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .fp-card .fp-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 3px 8px;
+    border: 1px solid var(--accent);
+  }
+  .fp-card .fp-img {
+    padding: 12px 16px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fp-card .fp-img img { width: 100%; height: auto; display: block; }
+  .fp-card .fp-foot {
+    padding: 12px 18px 16px;
+    border-top: 1px solid var(--rule-soft);
+    background: #faf8f1;
+  }
+  .fp-card .fp-driver {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .fp-card .fp-text {
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  @media (max-width: 900px) {
+    .fingerprint-grid { grid-template-columns: 1fr; }
+  }
+
+  /* regime divider */
+  .regime-bar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 18px;
+    align-items: center;
+    margin: 26px 0 10px;
+  }
+  .regime-bar .line { height: 1px; background: var(--rule); }
+  .regime-bar .label {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ---------- Pull quote / sidenote ---------- */
+  .pull {
+    border-left: 2px solid var(--accent);
+    padding: 8px 0 8px 22px;
+    margin: 28px 0;
+    font-family: var(--serif);
+    font-size: 21px;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--ink);
+    font-weight: 300;
+  }
+  .pull cite {
+    display: block;
+    font-family: var(--sans);
+    font-style: normal;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  /* ---------- Code-ish block ---------- */
+  .pipeline {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    background: #1a1a1a;
+    color: #e8e3d4;
+    padding: 24px 28px;
+    margin: 24px 0;
+    white-space: pre;
+    overflow-x: auto;
+    border-left: 3px solid var(--accent-soft);
+  }
+  .pipeline .c { color: #8a8473; }
+  .pipeline .k { color: oklch(0.78 0.10 70); }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    padding: 20px 24px;
+    margin: 28px 0;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .callout .h {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* limitation card */
+  .limcard {
+    border: 1px solid var(--rule);
+    padding: 22px 26px;
+    margin: 0 0 18px;
+    background: #fbf9f3;
+  }
+  .limcard h4 {
+    margin: 0 0 8px;
+    font-style: normal;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+  .limcard p { margin: 0; font-size: 15px; }
+
+  /* footer */
+  .colophon {
+    padding: 48px 96px 80px;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 48px;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .colophon .credit { font-style: italic; font-family: var(--serif); font-size: 14px; }
+
+  /* tag pill */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 18px 0 0;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 4px 9px;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    background: #fff;
+  }
+
+  /* highlight number inline */
+  .hl { color: var(--accent); font-weight: 500; }
+
+  /* mini abstract row */
+  .abstract {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 36px 96px;
+    background: #f1ecdb;
+  }
+  .abstract .h {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .abstract p { margin: 0; max-width: 780px; }
+
+  /* small caps */
+  .sc {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  /* footnote / aside */
+  .aside {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.55;
+    border-left: 1px solid var(--rule);
+    padding-left: 18px;
+    margin: 24px 0;
+  }
+
+  /* What's new in v2 */
+  .whatsnew {
+    padding: 28px 96px 36px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .whatsnew-h {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .whatsnew-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    max-width: 980px;
+  }
+  .whatsnew-title {
+    font-family: var(--serif);
+    font-size: 22px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+  .whatsnew-body {
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  @media (max-width: 900px) {
+    .whatsnew { padding-left: 28px; padding-right: 28px; }
+    .whatsnew-grid { grid-template-columns: 1fr; gap: 18px; }
+  }
+
+  /* ---------- Print / A4 ---------- */
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm;
+  }
+  @media print {
+    html, body {
+      background: #fff !important;
+      font-size: 10.5pt;
+      line-height: 1.45;
+    }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+
+    .page {
+      max-width: none;
+      margin: 0;
+      border: none;
+      background: #fff;
+      min-height: 0;
+      padding: 0;
+    }
+
+    /* Masthead becomes the cover page */
+    .masthead {
+      padding: 18mm 0 12mm;
+      page-break-after: always;
+      break-after: page;
+      border-bottom: 1px solid var(--rule);
+    }
+    .meta-row { margin-bottom: 36mm; font-size: 8.5pt; }
+    h1.title { font-size: 44pt; line-height: 1.02; margin-bottom: 10mm; }
+    .subtitle { font-size: 16pt; margin-bottom: 18mm; }
+    .byline { font-size: 9.5pt; gap: 18mm; padding-top: 6mm; }
+
+    /* Stats strip — keep together at top of page 2 */
+    .stats {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .stat { padding: 6mm 5mm; }
+    .stat .num { font-size: 22pt; }
+    .stat .unit { font-size: 11pt; }
+    .stat .label { font-size: 7.5pt; margin-top: 3mm; }
+
+    /* Abstract — keep on same page as stats if possible */
+    .abstract {
+      padding: 8mm 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .abstract p { font-size: 11pt; line-height: 1.55; }
+
+    /* What's new in v2 — sits after abstract on cover/intro spread */
+    .whatsnew {
+      padding: 8mm 0 6mm;
+      border-bottom: 1px solid var(--rule);
+      page-break-after: always;
+      break-after: page;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .whatsnew-h { font-size: 8pt; margin-bottom: 3.5mm; }
+    .whatsnew-grid { grid-template-columns: repeat(5, 1fr); gap: 4mm; max-width: none; }
+    .whatsnew-title { font-size: 11.5pt; margin-bottom: 2mm; line-height: 1.15; }
+    .whatsnew-body { font-size: 8.5pt; line-height: 1.35; }
+
+    /* Body container */
+    .body {
+      padding: 0;
+    }
+
+    /* Each top-level numbered section starts on its own page */
+    .section {
+      grid-template-columns: 32mm 1fr;
+      gap: 8mm;
+      padding: 10mm 0 8mm;
+      border-top: none;
+      page-break-before: always;
+      break-before: page;
+    }
+    .section:first-of-type {
+      page-break-before: auto;
+      break-before: auto;
+      padding-top: 6mm;
+    }
+    .section-tag { font-size: 7.5pt; }
+    .section-tag .num { font-size: 22pt; margin-bottom: 4mm; }
+    .section-body { max-width: none; }
+
+    h2 { font-size: 20pt; margin-bottom: 5mm; line-height: 1.15; page-break-after: avoid; break-after: avoid; }
+    h3 { font-size: 9.5pt; margin: 7mm 0 2.5mm; page-break-after: avoid; break-after: avoid; }
+    h4 { font-size: 12pt; margin: 5mm 0 1.5mm; page-break-after: avoid; break-after: avoid; }
+    p, li { font-size: 10.5pt; line-height: 1.5; orphans: 3; widows: 3; }
+    .lede { font-size: 12pt; line-height: 1.5; }
+    .lede::first-letter { font-size: 44pt; }
+
+    /* Lists, callouts, asides shouldn't split awkwardly */
+    ol.numbered li, ul.plain li,
+    .callout, .aside, .limcard, .pull {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Tables */
+    .tbl-wrap { page-break-inside: avoid; break-inside: avoid; margin: 5mm 0 6mm; }
+    table { font-size: 9pt; }
+    th, td { padding: 5pt 7pt; }
+    th { font-size: 7.5pt; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
+    .tbl-caption { font-size: 8pt; }
+    .tbl-foot { font-size: 9.5pt; }
+
+    /* Pipeline / code block */
+    .pipeline {
+      font-size: 8.5pt;
+      padding: 5mm 6mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Figures — keep together; allow page-break before only if needed (avoid forced blank pages) */
+    figure.bleed {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin: 6mm 0;
+      border: 1px solid var(--rule);
+    }
+    figure.bleed .img-wrap { padding: 6mm 8mm; }
+    figure.bleed img { max-height: 150mm; width: auto; max-width: 100%; margin: 0 auto; }
+    figure .figcap { padding: 4mm 8mm 5mm; gap: 6mm; grid-template-columns: 22mm 1fr; }
+    figure .figcap .lbl { font-size: 7.5pt; }
+    figure .figcap .text { font-size: 9.5pt; line-height: 1.45; }
+    figure .figcap .text em { font-size: 8pt; }
+
+    /* Hero figure: full-history — own page */
+    .hero-figure {
+      margin: 0;
+      page-break-before: always;
+      break-before: page;
+      page-break-after: always;
+      break-after: page;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      border: 1px solid var(--rule);
+    }
+    .hero-figure .img-wrap { padding: 8mm; }
+    .hero-figure .figcap { padding: 4mm 8mm 5mm; grid-template-columns: 28mm 1fr; }
+    .hero-figure img { max-height: 150mm; width: auto; max-width: 100%; margin: 0 auto; }
+
+    /* Fingerprint grid: 2x2, keep each pair (regime bar + grid) together */
+    .regime-bar {
+      margin: 6mm 0 3mm;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .regime-bar .label { font-size: 7.5pt; }
+    .fingerprint-grid {
+      margin: 4mm 0 4mm;
+      gap: 4mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fp-card { page-break-inside: avoid; break-inside: avoid; }
+    .fp-card .fp-head { padding: 3mm 4mm 2mm; }
+    .fp-card .fp-date { font-size: 13pt; }
+    .fp-card .fp-tag { font-size: 7.5pt; }
+    .fp-card .fp-img { padding: 3mm 4mm; }
+    .fp-card .fp-img img { max-height: 70mm; width: auto; max-width: 100%; }
+    .fp-card .fp-foot { padding: 3mm 4mm 4mm; }
+    .fp-card .fp-driver { font-size: 8pt; }
+    .fp-card .fp-text { font-size: 9pt; line-height: 1.4; }
+
+    /* Inline overrides used inline in the markup that break print width */
+    [style*="margin-left:248px"] { margin-left: 0 !important; }
+    [style*="width: 600px"], [style*="width:600px"] { width: auto !important; }
+    [style*="max-width:760px"] { max-width: 100% !important; }
+
+    /* Limitation cards */
+    .limcard { padding: 5mm 6mm; margin-bottom: 4mm; }
+    .limcard h4 { font-size: 10pt; }
+    .limcard p { font-size: 10pt; }
+
+    /* Pills */
+    .pills { gap: 2mm; margin-top: 5mm; }
+    .pill { font-size: 7.5pt; padding: 1mm 2.5mm; }
+
+    /* Colophon — bottom of last page */
+    .colophon {
+      padding: 8mm 0 0;
+      grid-template-columns: 32mm 1fr;
+      gap: 8mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
+      font-size: 8.5pt;
+    }
+    .colophon .credit { font-size: 9.5pt; }
+
+    /* Anti-orphan helpers */
+    p { page-break-inside: auto; }
+    h2 + p, h3 + p, h4 + p { page-break-before: avoid; break-before: avoid; }
+
+    /* ---- v2.1 pagination ----
+       Chromium fragments CSS grids unreliably across printed pages: a tall
+       child (figure, card) forces the whole grid row to the next page, which
+       is what stranded most figures on half-empty pages. Sections are laid
+       out as block flow for print instead — the rail label becomes an inline
+       kicker above the heading — so content packs naturally and two figures
+       can share a page. */
+    .section {
+      display: block !important;
+      padding: 7mm 0 5mm;
+      /* Sections flow instead of each claiming a fresh sheet — the rule above
+         the kicker keeps them visually separated when they start mid-page. */
+      page-break-before: auto !important;
+      break-before: auto !important;
+      border-top: 1px solid var(--rule);
+    }
+    .section:first-of-type { border-top: none; padding-top: 4mm; }
+    .section-tag {
+      margin-bottom: 4mm;
+      padding-top: 0;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+    h2 { page-break-after: avoid !important; break-after: avoid !important; }
+    .section-tag .num {
+      display: inline;
+      margin-right: 3mm;
+      font-size: 17pt;
+      vertical-align: baseline;
+    }
+    .section-body { max-width: none; }
+
+    /* Comfortable reading rhythm — the page-fill gain comes from block flow
+       above, not from squeezing the type. */
+    p, li { font-size: 10.5pt; line-height: 1.55; }
+    .lede { font-size: 12pt; line-height: 1.5; }
+    h2 { font-size: 20pt; margin-bottom: 5mm; }
+    h3 { margin: 7mm 0 2.5mm; }
+    h4 { margin: 5mm 0 2mm; }
+    th, td { padding: 5pt 7pt; }
+    .tbl-wrap { margin: 5mm 0 6mm; }
+    .limcard { padding: 5mm 6mm; margin-bottom: 4mm; }
+    .limcard h4 { font-size: 10pt; margin-bottom: 2mm; }
+    .limcard p { font-size: 10pt; line-height: 1.5; }
+    .callout { padding: 5mm 6mm; margin: 5mm 0; }
+    ol.numbered li, ul.plain li { padding-top: 3.5mm; padding-bottom: 3.5mm; }
+    .pull { margin: 6mm 0; font-size: 14pt; }
+    .aside { margin: 5mm 0; font-size: 10pt; line-height: 1.5; }
+
+    /* Figures: capped so a figure + caption is about half a page, letting
+       two stack on one sheet (Fig. 2 raw / Fig. 3 EMA read as a pair). */
+    figure.bleed { margin: 6mm 0; }
+    figure.bleed .img-wrap { padding: 5mm 7mm; }
+    figure.bleed img { max-height: 86mm; }
+    figure .figcap { padding: 4mm 7mm 5mm; gap: 6mm; grid-template-columns: 22mm 1fr; }
+    figure .figcap .text { font-size: 9.5pt; line-height: 1.45; }
+    figure .figcap .lbl { font-size: 7.5pt; }
+    /* Inline <em> inside a caption is emphasis ("before"/"after") and must stay
+       inline; only the trailing command line renders as its own mono line. */
+    figure .figcap .text em {
+      display: inline;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: inherit;
+      color: inherit;
+      margin-top: 0;
+    }
+    figure .figcap .text em:last-child {
+      display: block;
+      font-family: var(--mono);
+      font-style: normal;
+      font-size: 7.5pt;
+      color: var(--muted);
+      margin-top: 2mm;
+    }
+    /* Fig. 2 / Fig. 3 flow freely: binding them as one block stranded the
+       preceding page at under a third full, which costs more than the pair
+       being on consecutive pages. */
+    .figpair { display: contents; }
+    /* A table caption must never be stranded from its table */
+    .tbl-caption { page-break-after: avoid !important; break-after: avoid !important; }
+
+    /* Hero figure: no forced blank pages around it */
+    .hero-figure {
+      page-break-before: auto !important;
+      break-before: auto !important;
+      page-break-after: auto !important;
+      break-after: auto !important;
+      margin: 5mm 0;
+    }
+    .hero-figure .img-wrap { padding: 6mm 8mm; }
+    .hero-figure img { max-height: 108mm; }
+
+    /* Fingerprints: two cards per page, side by side, each unbreakable */
+    .fingerprint-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 6mm;
+      margin: 5mm 0 6mm;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .fp-card {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .fp-card .fp-head { padding: 3.5mm 4.5mm 2.5mm; }
+    .fp-card .fp-date { font-size: 13pt; }
+    .fp-card .fp-img { padding: 3mm 4mm; }
+    .fp-card .fp-img img {
+      max-height: 59mm;
+      width: auto;
+      max-width: 100%;
+      margin: 0 auto;
+      display: block;
+    }
+    .fp-card .fp-foot { padding: 3.5mm 4.5mm 4mm; }
+    .fp-card .fp-text { font-size: 9pt; line-height: 1.45; }
+    /* The single 'what the model sees' card keeps its centred single column */
+    .fingerprint-grid[style] { grid-template-columns: minmax(0, 150mm) !important; justify-content: center; }
+
+    /* The cross-panel aside and 'what the model sees' intro: normal flow,
+       no leftover screen offsets, never overlapping the cards above. */
+    .section > .section-body[style] {
+      margin-left: 0 !important;
+      margin-top: 3mm !important;
+      max-width: none;
+    }
+    .section > .section-body[style] .aside,
+    .section > .section-body[style] p { width: auto !important; }
+    .regime-bar { margin: 4mm 0 2mm; page-break-after: avoid; break-after: avoid; }
+    /* Colophon: single unbreakable block on the same (last) page. */
+    .colophon {
+      /* Grid containers fragment unpredictably here (Chromium ignores
+         break-inside on them), which orphaned the credit line onto a sheet of
+         its own. Inline-block columns sit side by side, stay short, and cannot
+         be split apart. */
+      display: block !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-before: avoid !important;
+      break-before: avoid !important;
+      padding-top: 3mm;
+      padding-bottom: 0;
+      /* A later max-width:900px block re-adds 28px side padding in print,
+         which narrowed the line box just enough to wrap the second column
+         onto its own line — and then across the page break. */
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      font-size: 8.5pt;
+      line-height: 1.45;
+    }
+    /* The appendix table is the last block before the colophon: a mild row
+       squeeze keeps the two together on the final sheet. */
+    .section:last-of-type th,
+    .section:last-of-type td { padding: 3.5pt 6pt; }
+    .colophon > div {
+      display: inline-block;
+      vertical-align: top;
+      margin-bottom: 0;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .colophon > div:first-child { width: 42mm; margin-right: 10mm; }
+    .colophon > div:last-child { width: 104mm; }
+    .colophon .credit { font-size: 9.5pt; }
+    .colophon [style*="margin-top:8px"] { margin-top: 2mm !important; }
+  }
+
+  /* responsive: collapse rail */
+  @media (max-width: 900px) {
+    .masthead, .body, .colophon, .abstract { padding-left: 28px; padding-right: 28px; }
+    .hero-figure { margin-left: -28px; margin-right: -28px; }
+    .hero-figure .img-wrap, .hero-figure .figcap { padding-left: 28px; padding-right: 28px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .section { grid-template-columns: 1fr; gap: 12px; }
+    .colophon { grid-template-columns: 1fr; }
+    h1.title { font-size: 38px; }
+  }
+</style>
+</head>
+<body style="">
+<div class="page">
+
+  <!-- =============== Masthead =============== -->
+  <header class="masthead">
+    <div class="meta-row">
+      <span>Technical Report <span class="dot"></span> October 2026</span>
+      <span>Macro / Machine Learning</span>
+      <span>Version 4.0</span>
+    </div>
+
+    <h1 class="title">Recession <em>Probability</em><br>Engine</h1>
+    <p class="subtitle" style="">A machine-learning approach to U.S. business-cycle forecasting</p>
+
+    <div class="byline">
+      <div>
+        <span class="label">Author</span>
+        <span class="value">Matteo Neirotti</span>
+      </div>
+      <div>
+        <span class="label">Period</span>
+        <span class="value">1950 – present</span>
+      </div>
+      <div>
+        <span class="label">Validation</span>
+        <span class="value">11-fold walk-forward, OOS, recovery-month refresh</span>
+      </div>
+      <div>
+        <span class="label">Stack</span>
+        <span class="value">XGBoost · SHAP · FRED</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =============== Headline metrics =============== -->
+  <section class="stats" aria-label="Headline results">
+    <div class="stat">
+      <div class="num">0.948<span class="unit">AUC</span></div>
+      <div class="label">ROC-AUC, published out-of-sample series 1971–2025</div>
+    </div>
+    <div class="stat">
+      <div class="num">11.3<span class="unit">months</span></div>
+      <div class="label">Average advance warning</div>
+    </div>
+    <div class="stat">
+      <div class="num">0<span class="unit">months</span></div>
+      <div class="label">Above the alarm line with no recession ahead, 1985–2025</div>
+    </div>
+    <div class="stat">
+      <div class="num">6 / 6<span class="unit"></span></div>
+      <div class="label">Out-of-sample recessions caught</div>
+    </div>
+  </section>
+
+  <!-- =============== Abstract =============== -->
+  <div class="abstract">
+    <div class="h">Abstract</div>
+    <p>
+      We present a machine-learning system that produces a monthly probability estimate of a U.S. recession occurring within the next 12 months. The architecture addresses three structural challenges of macro forecasting: a sparse positive-class history (~11 NBER-defined recessions since 1950), retroactive label definition, and the severe credibility cost of false alarms. A single XGBoost model is trained on 57 engineered features from FRED and validated by strict walk-forward — one fold per recession, every label used only once its 12-month outcome is known — and an EMA (exponential moving average) filter turns monthly probabilities into alarms. Version 4 traces and fixes the walk-forward's worst flaw: a 21-month false alarm in 1984–86 that appeared when v2.1 stopped each fold from training on labels it could not yet know. Each fold now also learns from the first twelve months of the recovery, each month added as soon as its own outcome has resolved; the number of months was chosen by a test whose selection rule was fixed before it ran. On the published out-of-sample series — each month scored by the model that would have been live, 1971–2025 — the system catches <span class="hl">all six recessions</span> with an average <span class="hl">11.3 months</span> of warning, reaches <span class="hl">ROC-AUC 0.948 and PR-AUC 0.813</span>, and has not once been above the alarm line without a recession ahead since November 1984: <span class="hl">zero such months from 1985 to 2025</span>, and 10 over the whole record, down from 46. Run through the same walk-forward, the literature's standard yield-curve model (Wright, 2006) scores ROC-AUC 0.840 with 28 false-alarm months, 21 of them in 2023–24, although it warns earlier before 2001 and 2008.
+    </p>
+  </div>
+
+  <!-- What's new in v4 -->
+  <div class="whatsnew">
+    <div class="whatsnew-h">What's new in v4</div>
+    <div class="whatsnew-grid">
+      <div class="whatsnew-item">
+        <div class="whatsnew-title">Recovery-month refresh</div>
+        <div class="whatsnew-body">Each walk-forward fold now also trains on the first 12 months after its recession ends, each month added the moment its 12-month label resolves. It removes the 1984–86 false alarm the v2.1 embargo exposed (21 months above 50%, peak 82%): false-alarm months fall from 46 to 10, none of them after 1984, and every recession is still caught (§4.7).</div>
+      </div>
+      <div class="whatsnew-item">
+        <div class="whatsnew-title">A pre-registered choice</div>
+        <div class="whatsnew-body">The number of recovery months was chosen by a rule written down and committed before the test ran — n = 0, 3, 6, 9, 12 on five random seeds — and every candidate is reported, not only the winner (Table 4).</div>
+      </div>
+      <div class="whatsnew-item">
+        <div class="whatsnew-title">Metrics on the published series</div>
+        <div class="whatsnew-body">Results are now measured on exactly the series that is charted and published, with PR-AUC, sensitivity, specificity and the Brier score alongside ROC-AUC, recessions caught, lead time and false-alarm months (§5.1).</div>
+      </div>
+      <div class="whatsnew-item">
+        <div class="whatsnew-title">A classic benchmark</div>
+        <div class="whatsnew-body">Wright's (2006) yield-curve probit, run through the identical walk-forward: ROC-AUC 0.840 against 0.948 and 28 false-alarm months against 10 — but with longer leads before 2001 and 2008 (§5.5).</div>
+      </div>
+      <div class="whatsnew-item">
+        <div class="whatsnew-title">One model</div>
+        <div class="whatsnew-body">The XGBoost + HistGradientBoosting blend, weighted 1 : 0 since v2, is gone. Every published number is bit-identical; a full monthly run takes about three minutes instead of more than ten. The COVID exclusion now runs through April 2021 (§4.2).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============== Body =============== -->
+  <main class="body">
+
+    <!-- 1. Introduction -->
+    <section class="section">
+      <div class="section-tag"><span class="num">01</span>Introduction</div>
+      <div class="section-body">
+        <h2>The hardest easy problem in applied ML.</h2>
+        <p class="lede">Recession forecasting occupies an unusual position in applied machine learning. The prediction target is rare — roughly 11% of post-war months fall within an NBER-defined recession window — its definition is retroactive, and the asymmetric cost of errors is severe. A false alarm is not merely an incorrect prediction; it is a credibility-destroying event that may cause the next genuine signal to be ignored.</p>
+
+        <p>Three structural challenges compound the difficulty:</p>
+
+        <ol class="numbered">
+          <li><strong>Label scarcity.</strong> The United States has experienced approximately 11 NBER-defined recessions since 1950 — fewer than 130 positive-class samples across 75 years of monthly data. A dataset size that would be considered trivially small in most ML contexts.</li>
+          <li><strong>Retroactive definition.</strong> The NBER typically announces recession start dates six to twelve months after the fact. Recent training labels are therefore provisional and subject to revision; models trained on the most current data are learning from unresolved ground truth.</li>
+          <li><strong>Forward contamination.</strong> A 12-month forward label means a sample from early 2019 carries a recession label of 1 simply because COVID arrived in Q1 2020 — not because of any cyclically learnable pattern in 2019. Without an explicit architectural response, the model learns spurious associations.</li>
+        </ol>
+
+        <p class="pull" style="">
+          The objective was not to build the most complex forecasting system, but a credible one — one that catches every major recession with meaningful advance warning, while maintaining a false-alarm rate low enough to preserve operational utility over time.
+          <cite>— Project thesis</cite>
+        </p>
+      </div>
+    </section>
+
+    <!-- 2. Data -->
+    <section class="section">
+      <div class="section-tag"><span class="num">02</span>Data &amp; Features</div>
+      <div class="section-body">
+        <h2>From forty-seven raw FRED series to fifty-seven engineered features.</h2>
+        <p>All data are sourced from FRED, the St. Louis Federal Reserve's public macroeconomic database. Forty-seven raw series are fetched via API, cached locally, and aligned to month-end frequency before feature engineering begins.</p>
+
+        <h3>Transformation philosophy</h3>
+        <p>Raw series are never used directly as model inputs. Every feature is derived as one or more of: absolute level, year-over-year percentage change, 3-month percentage change, 12-month absolute change, or a binary threshold flag. This layer normalizes units across heterogeneous series and extracts the rate-of-change signals that lead the underlying levels.</p>
+
+        <p>Where a series begins after 1950 — VIX before 1990, JOLTS before 2000 — the corresponding features are left as <em>proper missing values</em>. No imputation is applied. The production model handles structural missingness natively, learning to weight features relative to their actual historical availability.</p>
+
+        <h3>Feature groups (Dataset E, <span class="sc">plus</span> configuration)</h3>
+
+        <div class="tbl-caption">Table 1 — Production feature inventory · 57 features across 8 active domains</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Group</th>
+                <th class="num">Features</th>
+                <th class="num">Available from</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Core macro &amp; labor</td><td class="num">9</td><td class="num">1939</td></tr>
+              <tr><td>Inflation &amp; prices</td><td class="num">5</td><td class="num">1913</td></tr>
+              <tr><td>Housing &amp; consumption</td><td class="num">11</td><td class="num">1950</td></tr>
+              <tr><td>Yield curve &amp; central bank</td><td class="num">5</td><td class="num">1953</td></tr>
+              <tr><td>Credit &amp; corporate stress</td><td class="num">10</td><td class="num">1919</td></tr>
+              <tr><td>Market volatility &amp; leading indicators</td><td class="num">14</td><td class="num">1967</td></tr>
+              <tr><td>Bank lending standards (SLOOS)</td><td class="num">1</td><td class="num">1990</td></tr>
+              <tr><td>CapEx intent</td><td class="num">2</td><td class="num">1992</td></tr>
+              <tr class="total"><td>Total</td><td class="num">57</td><td class="num">— 1950 floor</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-foot" style="">A further 29 features are available under <span class="sc">--feature-set full</span> but were excluded from production after seeing a drop in performance when used.</p>
+
+        <h3>Class imbalance</h3>
+        <p>With roughly 11% recession-month prevalence, the dataset is severely imbalanced. Synthetic oversampling (SMOTE) is explicitly rejected: generating artificial recession months would corrupt the temporal structure of the data and produce training observations that violate chronological ordering. Instead, XGBoost weights the positive class by the ratio of negative to positive months (<span class="sc">scale_pos_weight</span>), rebalancing the loss without fabricating history. One consequence matters for reading the output: class weighting shifts probabilities upward by design, so the signal is best read as a risk score on the scale its 50% threshold was set on, not as a calibrated frequency (§5.1).</p>
+      </div>
+    </section>
+
+    <!-- 3. Architecture -->
+    <section class="section">
+      <div class="section-tag"><span class="num">03</span>Architecture</div>
+      <div class="section-body">
+        <h2>Five views of the macroeconomy. One production model.</h2>
+        <p style="">Rather than constructing a single feature matrix, the system organizes indicators into five dataset views, each representing a distinct analytical perspective. Datasets A–D were discarded due to weak signal quality. Dataset E is the production choice — it maximizes historical depth, covers the broadest feature space, and relies on XGBoost's native NaN handling to organically weight each feature based on its historical availability.</p>
+
+        <div class="tbl-caption">Table 2 — Dataset views</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>View</th>
+                <th class="num">Start</th>
+                <th class="num">Features</th>
+                <th>Perspective</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td class="num">1960</td><td class="num">9</td><td>Classic cycle: unemployment, industrial production</td></tr>
+              <tr><td>B</td><td class="num">1977</td><td class="num">19</td><td>Modern macro: yield curve, housing, sentiment</td></tr>
+              <tr><td>C</td><td class="num">1950</td><td class="num">11</td><td>Long history: payrolls, CPI, manufacturing hours</td></tr>
+              <tr><td>D</td><td class="num">1991</td><td class="num">10</td><td>Financial stress: credit spreads, VIX, jobless claims</td></tr>
+              <tr class="highlight"><td>E</td><td class="num">1950</td><td class="num">57</td><td>Production — full union plus CapEx and SLOOS</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Production pipeline</h3>
+        <div class="pipeline" style=""><span class="c"># Monthly inference run — current month excluded</span>
+FRED API <span class="c">(47 series)</span>
+    <span class="k">│</span>
+    <span class="k">▼</span>
+Feature engineering   <span class="c">→ 57 features, NaN-native</span>
+    <span class="k">│</span>
+    <span class="k">▼</span>
+Walk-forward <span class="c">(trough cut + recovery-month refresh)</span>
+    <span class="k">├──</span> EMA signal mode <span class="c">(production)</span>
+    <span class="k">└──</span> raw signal mode <span class="c">(reference)</span>
+    <span class="k">│</span>
+    <span class="k">▼</span>
+SHAP analysis         <span class="c">→ global summary + monthly waterfall</span>
+    <span class="k">│</span>
+    <span class="k">▼</span>
+History charts        <span class="c">→ full-history + per-fold evolution</span>
+    <span class="k">│</span>
+    <span class="k">▼</span>
+Run log               <span class="c">→ output/production/runs.csv · one row per month</span></div>
+
+        <h3>Why XGBoost</h3>
+        <p>Ten algorithms were evaluated — XGBoost, HistGradientBoosting, Logistic Regression, Random Forest, Gradient Boosting, AdaBoost, Extra Trees, SVC, MLP, Naive Bayes — on AUC across walk-forward folds and false-positive rate at the calibrated threshold. XGBoost dominated on both criteria across all datasets and time periods. It was selected as the sole production model for three reasons:</p>
+        <ul class="plain">
+          <li style="">Native handling of structural missingness without imputation.</li>
+          <li style="">Performance – It was the only model to consistently generate robust and reliable predictions across all evaluation windows.</li>
+          <li style="">SHAP decomposability allows feature-level attribution at every monthly inference.</li>
+        </ul>
+        <p>Through v3 the pipeline still trained a HistGradientBoosting model beside it and blended the two at weights 1 : 0, so the second model never moved a number. v4 removes the blend: production is one XGBoost model, with every published value bit-identical to the blended version. HistGradientBoosting remains available as a comparison algorithm.</p>
+      </div>
+    </section>
+
+    <!-- Hero figure: full-history -->
+    <figure class="hero-figure">
+      <div class="img-wrap">
+        <img src="assets/fig-full-history-v4.png" alt="Production-model recession probability, 1950 to present, with NBER recession bands">
+      </div>
+      <div class="figcap">
+        <div class="lbl">Fig. 1<br>Full history</div>
+        <div class="text" style="font-weight: 400;">
+          Production-model recession probability, 1950 – present, EMA-filtered. NBER recession windows shaded in pink. The model tracks every post-war recession and remains suppressed during the 2011 European debt crisis, the 2015–16 China slowdown, and the 2022–23 rate-hike cycle.<br><br><b style="font-weight: 400;">Note: before 2019 this curve is the model's in-sample fit to events it was trained on. Its training data ends in January 2019 (§4.2), so every month plotted after that is genuine out-of-sample prediction. Out-of-sample performance across the whole record is in Fig. 2–4 and §5.</b><br><em style="font-weight: 400;">plot history · dataset E · production XGBoost · EMA-filtered</em>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 4. Methodology -->
+    <section class="section">
+      <div class="section-tag"><span class="num">04</span>Methodology</div>
+      <div class="section-body">
+        <h2>The mechanisms that enforce temporal honesty.</h2>
+
+        <h3>4.1 — Walk-forward validation</h3>
+        <p>Standard k-fold cross-validation is inappropriate for time-series macro data: training on post-2005 data to predict pre-2000 outcomes leaks future distributional information into the past. Walk-forward validation enforces a strict chronological constraint — each fold trains on all data up to a fixed cutoff and evaluates on all subsequent data. Cutoffs are placed after the resolution of one historical recession, producing 11 folds covering the full record. Each fold accumulates one additional recession episode in its training data, simulating the progressive accumulation of evidence that occurs in real-time deployment.</p>
+
+        <h4>Label resolution: no row before its outcome is known (v2.1).</h4>
+        <p>A training row dated <em>m</em> carries a label built from months <em>m</em>+1 … <em>m</em>+12, so it can only be used once those twelve months have passed. Each fold is cut twelve months after its recession ends — roughly when NBER announces the end — and tested on every month after the cut. v2.1 enforced the label rule by dropping the twelve rows before each cut (the fold embargo): fold 6's July 1981 row, for example, is labeled positive only because the August 1981 <em>test</em> recession begins one month later. That removed a genuine look-ahead. But because each fold model is then frozen for the whole expansion that follows, it also meant that no fold ever saw a single month of recovery. v2.1 reported the embargo as nearly free — average mature-fold AUC 0.959 → 0.955 — and the average hid a 21-month false alarm in 1984–86 (§4.7).</p>
+
+        <h4>Recovery-month refresh (v4).</h4>
+        <p>v4 keeps the rule and fixes the timing. During the first year after each cut, the fold model is refreshed monthly: test month <em>cut</em> + <em>j</em> is predicted by a model trained on rows up to <em>trough</em> + min(<em>j</em> − 1, 12), so each recovery month joins as soon as its own label has resolved. After twelve refreshes the model is frozen until the next fold takes over. The production model follows the same rule (§4.2). Why twelve, and how it was chosen, is §4.7.</p>
+
+        <h3>4.2 — Structural safety mechanisms</h3>
+
+        <h4>The training cutoff: end of the last recession, plus its recovery (v3, v4).</h4>
+        <p>Through v2.1 the production model trained only on data older than 24 months from the current date — a rolling T&minus;24 window. v3 replaced that rule with a fixed anchor at the end of the most recent NBER recession, April 2020 (<span class="sc">config.LAST_RECESSION_END</span>). v4 extends the anchor by the same twelve recovery months the folds use (<span class="sc">config.PRODUCTION_TRAIN_END</span>, April 2021). The COVID censor described below covers every one of those months, so the <em>effective</em> last training month is still <strong>January 2019</strong> and the live model is unchanged.</p>
+        <p>The cutoff satisfies the two label-integrity requirements the old one existed for. NBER revises <span class="sc">USREC</span> retroactively, so recent “no recession” rows may later flip to 1; and a row dated <em>m</em> asserts an outcome over months <em>m</em>+1 … <em>m</em>+12, a window that has not resolved for rows near today. Anchoring to a <em>closed</em> recession episode is strictly safer on both counts than anchoring to the calendar. When NBER dates the end of the next recession, its recovery months will join automatically, one per monthly run, as their labels resolve.</p>
+        <p>The anchor also keeps deployment and validation identical. The production model trains on exactly the rows of walk-forward fold 11's final model: <strong>the model that is deployed is the model that was validated.</strong> Under T&minus;24 the deployed model and the fold models were different objects measured against a shared threshold, a mismatch quantified in §4.6. And because the production model never observes a month after January 2019, the entire post-2019 segment of the full-history chart is genuine out-of-sample prediction.</p>
+
+        <h4>COVID censoring.</h4>
+        <p style="">The period February 2019 through April 2021 is physically removed from the training matrix. Samples from early 2019 carry a recession label of 1 because COVID struck in Q1 2020, not because of any learnable cyclical deterioration; the 2020 recession was an exogenous biological shock; and v4 extends the window through April 2021 because twelve-month changes in early 2021 are measured against the lockdown months. Retaining the period would teach the model to associate ordinary cyclical weakness with pandemic-scale anomalies. The same window is excluded from false-positive counting and from every metric in §5.</p>
+
+        <h4>Class weighting.</h4>
+        <p>XGBoost's positive-class weight replaces synthetic oversampling, preserving the temporal integrity of the training data.</p>
+
+        <h4>Forward-fill with cap.</h4>
+        <p>FRED series are published asynchronously. When the most recent release for an indicator is unavailable, the system carries the last known value forward, capped at two months. This prevents pipeline failure from incomplete current data without admitting observations that are more than two months stale.</p>
+
+        <h4>Publication-lag alignment (v2).</h4>
+        <p>FRED series are stamped with their <em>reference period</em>, not their release date. March CPI carries a March 31 timestamp but is not published until mid-April; Q4 corporate profits carries a December 31 timestamp but is not released until late January. v1 indexed every series at its reference-period end, which silently exposed the model to data 1–3 months before it would have been observable in real-time deployment. v2 shifts series forward to reflect their actual publication lag: monthly series by two months, quarterly series by four. This eliminates a category of look-ahead leakage that was particularly acute for the quarterly indicators (SLOOS bank tightening, corporate profits) that the model relies on for the early stages of a contraction.</p>
+
+        <h4>Strict prediction anchor (v2).</h4>
+        <p>FRED quarterly series can extend the feature index past the current month — corporate profits, for instance, often publishes a forward-dated month-end stamp. v1's anchor logic only skipped the exact current month, which silently allowed future-dated rows to surface as the “current” inference under specific calendar conditions. v2 enforces a strict filter to the last complete month strictly before today, eliminating an entire class of forward-bias that could quietly contaminate the production probability.</p>
+
+        <h3>4.3 — The EMA signal filter</h3>
+        <p>Raw probability output from any macro model contains noise. A single month above the alarm threshold does not constitute a reliable signal; isolated spikes are common during mid-cycle slowdowns and rate-hike episodes that do not resolve into recessions. v2 uses an <strong>exponential moving average</strong> as the production filter — at each month, the filtered value is a weighted blend of the new raw probability and the prior filtered value, with the weight (α = 0.35) tuned so that roughly three sustained months of elevated raw probability are needed to cross the 50% alarm threshold.</p>
+
+        <p>The EMA is <em>path-aware</em>: a gradual 40→50% build-up over several months accumulates into the filtered series faster than a single-month spike that was at 0% the prior month. A sustained high signal crosses the alarm threshold sooner than a fixed-window confirmed filter would allow; an isolated spike, however large, decays before it can.</p>
+
+        <div class="callout">
+          <div class="h">Why EMA replaces the prior confirmed filter</div>
+          <p>v1 used a confirmed-signal filter requiring <em>N consecutive months</em> above threshold before activating. It was robust but had two structural weaknesses: it was <strong>path-blind</strong> (a gradual 4-month build-up was treated identically to an isolated spike preceded by zeros), and it imposed a <strong>fixed activation delay</strong> regardless of signal strength.</p>
+          <p style="margin-top: 10px;">The EMA filter resolves both. In benchmark testing on mature folds (4–11), it preserves the low false-alarm profile while recovering the 2001 Dot-Com recession that the confirmed filter missed entirely — the latter's required streak kept breaking against the noisier 2001 build-up.</p>
+        </div>
+
+        <p>Unlike a purely threshold-based post-filter, the EMA directly affects the AUC reported in walk-forward validation. AUC is computed on the EMA-smoothed probability series, not the raw model output; smoothing reduces month-to-month noise and produces a more stable ranking of pre-recession months vs. normal months, which raises AUC. This is the intended behavior — the EMA represents the operational signal the system produces, and AUC should reflect the quality of that signal.</p>
+
+        <p>Hysteresis emerges <em>implicitly</em> from the smoothing: a brief dip during a sustained high-EMA period cannot instantly reset the alarm, because the EMA carries prior history forward. No explicit Schmitt-trigger deactivation threshold is required — the integrator is itself the memory.</p>
+
+        <h3>4.4 — Threshold calibration</h3>
+        <p>A model outputs a probability; an alarm requires a threshold. The production threshold is fixed at <strong>50%</strong> — selected by sweeping candidate levels over the OOS predictions from mature folds for the value that minimized dangerous false-positive streaks (sustained above-threshold EMA signals not followed by an NBER recession within 12 months) while preserving maximum recession coverage. The natural center of the probability scale satisfied both criteria, with a clean interpretation: the alarm fires when the model has genuine, balanced-evidence conviction rather than marginal elevation.</p>
+
+        <h3>4.5 — Feature validation via Monte Carlo ablation</h3>
+        <p style="">Before finalizing the production feature set, 25 candidate features across six domains were evaluated using a Monte Carlo ablation procedure. In each of <span class="hl">1,790 iterations</span>, a random subset of candidates was added to the baseline matrix and the impact on AUC and false-positive rate was measured. <strong>Every candidate either degraded AUC, increased false-positive rate, or both.</strong> The dominant failure mode was multicollinearity: many candidates were overlapping proxies for the same underlying phenomenon, diluting signal without providing orthogonal information.</p>
+
+        <p style="">Three features showed marginal positive signal in isolation and were retained in the <span class="sc">plus</span> configuration after individual walk-forward confirmation.</p>
+
+        <h3>4.6 — Auditing the cutoff: a T&minus;24 walk-forward</h3>
+        <p>The production cutoff (§4.2) did not move on principle. It moved because the previous rule was put through the validation harness and failed there.</p>
+        <p>The audit rebuilds the walk-forward the way T&minus;24 builds production. In the standard harness each fold trains to the end of a completed recession; in the T&minus;24 variant each fold instead trains to <em>onset &minus; 24 months</em> for every recession in the record — which is what a T&minus;24 production model would have looked like standing two years ahead of each episode. Everything else is held fixed: features, model, fold embargo, COVID censor, EMA filter, 50% threshold.</p>
+        <div class="tbl-caption">Table 3 — Recession coverage by training-cutoff rule (v3 audit)</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>Episode</th><th>Recession-end cutoff</th><th>T&minus;24 cutoff</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1970</td><td>Detected</td><td><strong>Missed</strong></td></tr>
+              <tr><td>1990</td><td>Detected · 18 months lead</td><td>Detected · 14 months lead</td></tr>
+              <tr><td>2001</td><td>Detected</td><td><strong>Missed</strong></td></tr>
+              <tr><td>2008</td><td>Detected · 8 months lead</td><td>Detected · 6 months lead</td></tr>
+              <tr class="total"><td>Coverage</td><td>7 / 7</td><td>5 / 7</td></tr>
+              <tr><td>Average lead, detected episodes</td><td class="num">12.4 months</td><td class="num">12.2 months</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-foot">Only the episodes where the two designs differ are listed. The T&minus;24 construction catches <strong>five of seven</strong> countable recessions where the recession-cutoff construction catches <strong>seven of seven</strong>; 1970 and 2001 are missed outright, not merely shortened.</p>
+        <p>Average lead over the episodes each design does catch is nearly identical — 12.2 against 12.4 months — and that is the point. The difference is not in how early the alarm fires. It is in <em>whether it fires at all</em>. The same gap appears on live data: run on identical recent inputs, the T&minus;24 model was roughly <strong>five times calmer</strong> than a recession-cutoff model (mean raw probability 1.87% against 8.93% over September 2024 – July 2026), so the 50% threshold — calibrated on fold-model output (§4.4) — was being applied to a systematically quieter model. Anchoring the cutoff to the last recession removes the mismatch by construction. It is also the reason the recovery months of §4.7 are capped at twelve: training much deeper into an expansion drifts back toward this design.</p>
+
+        <!-- Raw vs filtered figures, side stack — kept on one page as a pair -->
+        <div class="figpair">
+        <figure class="bleed">
+          <div class="img-wrap">
+            <img src="assets/fig-walkforward-raw-v4.png" alt="Walk-forward raw, unfiltered probabilities">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 2<br>Raw signal</div>
+            <div class="text">
+              Walk-forward predictions, folds 4–11, <em>before</em> any filtering. Each month is predicted by the fold model that would have been live, including the monthly refreshes of the first recovery year. Mid-cycle spikes are visible — short exceedances during episodes that did not resolve into recessions.
+              <em>plot history-folds · dataset E · production XGBoost · feature-set plus · raw</em>
+            </div>
+          </div>
+        </figure>
+
+        <figure class="bleed">
+          <div class="img-wrap">
+            <img src="assets/fig-walkforward-ema-v4.png" alt="Walk-forward EMA-filtered probabilities">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 3<br>EMA-filtered</div>
+            <div class="text">
+              The same folds <em>after</em> the EMA filter (α = 0.35) — the series that is published and scored in §5. Short exceedances are suppressed; structural alarm periods (1973, 1980, 1981, 1990, 2001, 2007) remain. The 2001 build-up crosses threshold three months before the recession begins.
+              <em>plot history-folds · dataset E · production XGBoost · feature-set plus · --ema</em>
+            </div>
+          </div>
+        </figure>
+        </div>
+
+        <h3>4.7 — Fixing 1985: a pre-registered test of the recovery months</h3>
+        <p>The v2.1 embargo was correct, and it also introduced the walk-forward's worst flaw. Before it, the 1984–88 out-of-sample signal peaked at 42.9%. Under it — same data, same model — the signal climbed to 81.8% and stayed above 50% for 21 consecutive months, from November 1984 to July 1986. The 2001 and 2008 warnings were unchanged.</p>
+        <p>The cause is fold 7, which makes every prediction from December 1983 to March 1992. Its cut is November 1983, and the embargo stops its training at November 1982, the last month of the 1981–82 recession. Of the 45 months before that point, 44 are labeled “recession ahead”, with the Fed funds rate averaging about 13.6%. The twelve rows the embargo removed — December 1982 to November 1983, rates near 9%, no recession — were the model's only examples of high rates in an expansion. Without them, “high rates mean recession” is a rule with no exceptions in its training data. SHAP attributes about half of the 1984–86 rise to the Fed funds level alone (+1.04 of +1.92 log-odds), with CPI and oil next.</p>
+        <p>Those twelve rows were not unknowable forever, only for a year: from November 1984 their labels were settled. The fix is to use them as soon as they are — the refresh rule of §4.1. How many recovery months to admit is a parameter that could easily be tuned until 1985 disappears, so it was chosen under a rule written down and committed before the test ran: candidates n = 0, 3, 6, 9 and 12 on five random seeds; every recession caught on every seed, then the fewest false-alarm months, then the longest average lead, then PR-AUC, with near-ties going to the smaller n.</p>
+
+        <div class="tbl-caption">Table 4 — Recovery months tested · published-series metrics, mean of five seeds</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Recovery months n</th>
+                <th class="num">False-alarm months</th>
+                <th class="num">Months ≥ 50%, 1984–88</th>
+                <th class="num">ROC-AUC</th>
+                <th class="num">PR-AUC</th>
+                <th class="num">Avg lead</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>0 (v3 rule)</td><td class="num">47.0</td><td class="num">32.4</td><td class="num">0.929</td><td class="num">0.786</td><td class="num">11.6</td></tr>
+              <tr><td>3</td><td class="num">31.2</td><td class="num">23.2</td><td class="num">0.939</td><td class="num">0.800</td><td class="num">12.0</td></tr>
+              <tr><td>6</td><td class="num">15.4</td><td class="num">7.4</td><td class="num">0.944</td><td class="num">0.805</td><td class="num">11.6</td></tr>
+              <tr><td>9</td><td class="num">12.2</td><td class="num">4.2</td><td class="num">0.942</td><td class="num">0.803</td><td class="num">11.4</td></tr>
+              <tr class="highlight"><td>12 (selected)</td><td class="num">10.0</td><td class="num">1.8</td><td class="num">0.946</td><td class="num">0.808</td><td class="num">11.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-foot">Every value of n catches all six recessions on all five seeds. The rule selects n = 12, the largest value allowed; the range was capped there on purpose (§4.6). Seed-to-seed spread narrows as n grows: false-alarm months range 10–24 at n = 6 against 8–13 at n = 12. Published figures use the production seed, whose values differ slightly from these means. Protocol and harness: <span class="sc">experiments/recovery_months/</span>, branch <span class="sc">exp/recovery-months</span>.</p>
+
+        <figure class="bleed">
+          <div class="img-wrap">
+            <img src="assets/fig-recovery-months-v4.png" alt="Walk-forward EMA signal under the v3 rule and under the v4 recovery-month refresh">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 4<br>Recovery months</div>
+            <div class="text">
+              Walk-forward EMA signal, folds 4–11, under the v3 rule (top, n = 0) and the v4 recovery-month refresh (bottom, n = 12), production seed. The 1984–86 plateau is gone; what remains are single months in December 1983 (56%) and November 1984 (50.05%). Everything from 2021 on is identical.
+              <em>experiments/recovery_months · branch exp/recovery-months</em>
+            </div>
+          </div>
+        </figure>
+
+        <p>What remains of 1983–84 is two isolated months: December 1983 at 56%, the first month after fold 7's cut, before any recovery month's label has resolved; and November 1984 at 50.05%, after the Fed had pushed rates back toward 11% and the curve had gone nearly flat. Both fall back the following month (§7.3). The cost is small and measured. Averaged over the five seeds, the lead shortens from 11.6 to 11.4 months and sensitivity at 50% dips from 83% to 80%; on one seed in five the 2008 warning shrinks to 2 months (it stays at 8 on the production seed). None of it touches the live model: every COVID-recovery month is censored, so production is unchanged and every reading since 2021 is identical.</p>
+
+      </div>
+    </section>
+
+    <!-- 5. Results -->
+    <section class="section">
+      <div class="section-tag"><span class="num">05</span>Results</div>
+      <div class="section-body">
+        <h2>Out-of-sample performance, measured on what is published.</h2>
+        <p>Through v3 the headline numbers averaged each fold's metrics over every later decade — fold 4, trained through 1971, was scored on 2023. That measures how a model ages, not what was published. v4 headlines the stitched series instead: each month is scored by the fold model that would have been live at the time, exactly as Fig. 3 draws it, from December 1971 to the last month with a resolved label (October 2025). The COVID window (February 2019 – April 2021) is excluded throughout. A recession counts as caught if the EMA signal crosses 50% in the 18 months before its onset; a false-alarm month is any month above 50% outside every window running from 18 months before an onset to 3 months after the recession ends.</p>
+
+        <h3>5.1 — The published series</h3>
+        <div class="tbl-caption">Table 5 — Published out-of-sample series · Dataset E · EMA filter (α = 0.35) · production seed</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="num">v3 rule</th>
+                <th class="num">v4</th>
+                <th class="num">Wright (2006)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Recessions caught</td><td class="num">6 / 6</td><td class="num">6 / 6</td><td class="num">6 / 6</td></tr>
+              <tr><td>Lead, months (1973 · 1980 · 1981 · 1990 · 2001 · 2008)</td><td class="num">4 · 18 · 18 · 18 · 3 · 8</td><td class="num">5 · 18 · 18 · 16 · 3 · 8</td><td class="num">8 · 17 · 18 · 18 · 8 · 14</td></tr>
+              <tr><td>Average lead, months</td><td class="num">11.5</td><td class="num">11.3</td><td class="num">13.8</td></tr>
+              <tr><td>False-alarm months, 1971–2025</td><td class="num">46</td><td class="num">10</td><td class="num">28</td></tr>
+              <tr class="highlight"><td>False-alarm months since 1985</td><td class="num">26</td><td class="num">0</td><td class="num">22</td></tr>
+              <tr><td>ROC-AUC</td><td class="num">0.934</td><td class="num">0.948</td><td class="num">0.840</td></tr>
+              <tr><td>PR-AUC</td><td class="num">0.801</td><td class="num">0.813</td><td class="num">0.747</td></tr>
+              <tr><td>Sensitivity at 50%</td><td class="num">81.9%</td><td class="num">81.2%</td><td class="num">68.8%</td></tr>
+              <tr><td>Specificity at 50%</td><td class="num">85.7%</td><td class="num">94.0%</td><td class="num">90.2%</td></tr>
+              <tr><td>Brier score</td><td class="num">0.101</td><td class="num">0.072</td><td class="num">0.124</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-foot">The v3-rule and v4 columns are the same model, data and seed; only the training rule differs. Leads are capped at 18 months by the detection window. Eight of v4's ten false-alarm months are December 1977 – July 1978, the 1980 warning arriving 26 months before onset; the other two are the 1983–84 months of §4.7. From January 1985 onward the v4 series has none at all, through four recessions, the 2022–23 stress test and the live period to date; the v3 rule has 26 in 1985–89 and the benchmark 22, in 1989 and 2023–24. The benchmark is described in §5.5.</p>
+
+        <p>ROC-AUC asks whether pre-recession months are ranked above calm ones; PR-AUC asks the same of the rare class and is the stricter of the two when positives are scarce (Davis &amp; Goadrich, 2006). Sensitivity and specificity are measured at the 50% alarm line. The Brier score, the mean squared distance between the probability and the outcome, improves the most (0.101 → 0.072), but it should be read with care: because the model is class-weighted (§2), its output is a risk score on the threshold's scale rather than a calibrated frequency.</p>
+
+        <h3>5.2 — Fold by fold: how a model ages</h3>
+        <p>The per-fold view, reported as the headline through v3, scores each fold model on <em>all</em> later data — far beyond the segment in which it would ever be used. It remains a useful stress test of how a model ages.</p>
+        <div class="tbl-caption">Table 6 — Per-fold results · each fold scored on all later data · EMA filter</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fold</th>
+                <th>Recession ended</th>
+                <th class="num">Recessions in training</th>
+                <th class="num">AUC</th>
+                <th class="num">FP / yr</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>4</td><td>Nov 1970</td><td class="num">4</td><td class="num">0.940</td><td class="num">0.2</td></tr>
+              <tr><td>5</td><td>Mar 1975</td><td class="num">5</td><td class="num">0.905</td><td class="num">0.3</td></tr>
+              <tr><td>6</td><td>Jul 1980</td><td class="num">6</td><td class="num">0.957</td><td class="num">0.1</td></tr>
+              <tr class="highlight"><td>7</td><td>Nov 1982</td><td class="num">7</td><td class="num">0.977</td><td class="num">0.0</td></tr>
+              <tr><td>8</td><td>Mar 1991</td><td class="num">8</td><td class="num">0.981</td><td class="num">0.0</td></tr>
+              <tr><td>9</td><td>Nov 2001</td><td class="num">9</td><td class="num">0.990</td><td class="num">0.0</td></tr>
+              <tr><td>10</td><td>Jun 2009</td><td class="num">10</td><td class="num">n/a †</td><td class="num">0.1</td></tr>
+              <tr><td>11</td><td>Apr 2020</td><td class="num">11</td><td class="num">n/a †</td><td class="num">0.0</td></tr>
+              <tr class="total"><td colspan="3">Average (mature folds 4–9)</td><td class="num">0.958</td><td class="num">0.1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-foot">† No completed out-of-sample recession is eligible for AUC scoring after 2009 (COVID-2020 is excluded as exogenous). On identical data the v3 rule averages 0.954; fold 7, the 1985 culprit, moves from 0.943 and 0.2 FP/yr to 0.977 and 0.0. Across folds 8–11 the months above 50% outside any recession window total 6 — in 2006, early 2023, and one month after 2001 — down from 15. Average advance warning in this view, excluding COVID: <strong>13.2 months</strong>.</p>
+
+        <div class="callout">
+          <div class="h">Average mature-fold AUC, v1 → v4 · where the change comes from</div>
+          <p style="margin: 0; font-family: var(--mono); font-size: 14px; line-height: 1.8;">
+          v1 (paper, confirmed filter) &nbsp;→&nbsp; <strong>0.827</strong><br>
+          + publication-lag alignment (§4.2) &nbsp;→&nbsp; 0.835 &nbsp; <span style="color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: 0.06em;">+0.008</span><br>
+          + EMA filter (§4.3) &nbsp;→&nbsp; <strong>0.959</strong> &nbsp; <span style="color: var(--accent); font-family: var(--sans); font-size: 12px; letter-spacing: 0.06em;">+0.124</span><br>
+          + fold embargo (§4.1, v2.1) &nbsp;→&nbsp; 0.955 &nbsp; <span style="color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: 0.06em;">−0.004</span><br>
+          + recovery-month refresh (§4.7, v4) &nbsp;→&nbsp; <strong>0.958</strong> &nbsp; <span style="color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: 0.06em;">+0.004 on identical data</span>
+          </p>
+          <p style="margin-top: 10px; margin-bottom: 0;">The EMA filter remains the dominant driver; because AUC is computed on the smoothed series, it should be compared against other smoothed-signal AUCs, not raw-probability benchmarks. The embargo's −0.004 looked like proof that nothing had been hiding at the fold boundaries. The average concealed the 1984–86 false alarm, which only the stitched series made visible — the main reason v4 headlines the published series.</p>
+        </div>
+
+        <h3>5.3 — The 2001 recession: caught, with a short lead</h3>
+        <p>In v1, fold 8 (trained through March 1991) assigned only ~35% to the 2001 Dot-Com recession and the confirmed filter never activated. From v2 on — same model, same training data, EMA filter — the signal crosses threshold in January 2001, <strong>3 months before</strong> the recession begins. The 2001 build-up arrived through several months of mid-50s–mid-60s readings, repeatedly interrupted by lower months that broke the confirmed filter's N-consecutive streak. The EMA accumulates that build-up smoothly instead of resetting on each dip, recovering a weak-but-genuine signal that v1's filter discarded.</p>
+        <p>The lead time is shorter than at other detections in the modern record for reasons explained in §7.1: the most diagnostic features for a corporate-led, equity-and-CapEx contraction had observed at most one prior recession by the time fold 8 trained. The model could not produce a strong signal, but the signal it did produce is no longer thrown away.</p>
+
+        <h3>5.4 — The 2022–23 stress test</h3>
+        <p>The 2022–23 period was the most demanding false-positive challenge in the modern dataset. The Federal Reserve raised rates by 525 basis points in 16 months; the 10Y–2Y yield curve inverted to its deepest level since 1981; and surveyed economists put the odds of a recession above 60%. Most quantitative macro models — including the univariate yield-curve heuristic — generated sustained false-positive signals.</p>
+        <p>The production signal rose to 44% in February 2023 but never crossed the 50% threshold. The SHAP decomposition of that month shows why, and corrects v3, which attributed the rise to the Fed funds level. The inverted curve (+0.46) and the pace of hikes (<span class="sc">fedfunds_12m_chg</span>, +0.42) did push up, but the largest upward pushes came from falling corporate profits (−3% year over year, +0.75), depressed consumer sentiment (+0.57) and rising involuntary part-time work (+0.55). The Fed funds <em>level</em> pushed down (−0.60): at 4.3% it is ordinary by the standards of the 1954–2019 training record (§7.4). Low jobless claims (−0.42), a Sahm reading of zero (−0.36) and positive industrial production (−0.25) held the line. In the per-fold view, two older fold models — fold 8, trained through 1991, and fold 10, through 2009 — brush above 50% for one or two months in early 2023 (peaks near 58%); the fold-11 model and the production model stay below throughout.</p>
+
+        <h3>5.5 — Against a classic benchmark</h3>
+        <p>The natural question about a 57-feature model is whether it beats a simple one. The literature's standard simple model builds on the yield-spread probits of Estrella and Mishkin (1998). Wright (2006) shows that adding the level of the nominal Fed funds rate to the 3-month / 10-year term spread improves both in-sample fit and out-of-sample accuracy, and that the strongest recession signature is “an inverted yield curve with a high level of the nominal funds rate.” We ran that two-variable probit through the identical walk-forward — same folds, recovery-month refresh, COVID exclusion, EMA filter, 50% line and metrics, with its inputs aligned exactly like the production pipeline's Fed funds series. Only the model and its inputs differ, so any difference in Table 5 comes from the model, not the test.</p>
+        <p>The benchmark catches all six recessions too, and warns earlier: 8 months before 2001 against 3, and 14 before 2008 against 8, because the yield curve inverted well ahead of both. It pays for that with 28 false-alarm months — 21 of them consecutive, from April 2023 to December 2024, the inversion that did not become a recession — and with lower accuracy on every month-level measure: ROC-AUC 0.840, PR-AUC 0.747, sensitivity 69%. The multidimensional model gives up a few months of lead on two episodes for a far quieter signal, and in 2023–24 the quiet signal was the right one.</p>
+
+        <figure class="bleed">
+          <div class="img-wrap">
+            <img src="assets/fig-benchmark-wright-v4.png" alt="Production model versus the Wright (2006) benchmark through the same walk-forward">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 5<br>Benchmark</div>
+            <div class="text">
+              EMA signal, folds 4–11, for the production model (top) and Wright's two-variable probit (bottom), both run through the same walk-forward. The benchmark's smoother curve rises earlier before 2001 and 2008 but stays above 50% from April 2023 to December 2024.
+              <em>experiments/benchmark_wright · branch exp/recovery-months</em>
+            </div>
+          </div>
+        </figure>
+
+        <h4>Versus the univariate inversion rule.</h4>
+        <p>The 10Y–2Y Treasury yield-curve inversion is the most widely cited single-variable recession predictor. A naive rule — “alarm when the spread turns negative” — has historically preceded U.S. recessions with reasonable consistency. In 2022–23, however, it generated a sustained false alarm exceeding <span class="hl">26 months</span>. Over the same period, this model's production signal did not activate.</p>
+        <div class="aside">
+          The structural explanation is not that the yield curve is wrong, but that it is context-free. A curve inversion in a full-employment economy with accelerating industrial production is fundamentally different from an inversion accompanied by rising unemployment and tightening credit. A multidimensional model can represent that distinction; a univariate threshold cannot.
+        </div>
+
+        <h4>Versus published results.</h4>
+        <p>Comparisons across papers are rough — different samples, frequencies, horizons and evaluation designs — so they are offered as orientation, not a ranking. Wright reports out-of-sample root mean square errors of 0.33–0.40 for recursive recession-probability forecasts over 1980–2005, and 0.34 for his best four-quarter models. Scored on the same window, the v4 series has an RMSE of 0.25 (0.23 when averaged to quarters) and a ROC-AUC of 0.967, against an RMSE of 0.33 under the v3 rule. Yazdani (2026), revisiting machine-learning recession models on 1959–2024 data, finds tree ensembles strongest, with out-of-sample AUC above 0.9 — the range in which this system sits.</p>
+      </div>
+    </section>
+
+    <!-- 6. SHAP -->
+    <section class="section">
+      <div class="section-tag"><span class="num">06</span>Explainability</div>
+      <div class="section-body">
+        <h2>Every probability comes with its decomposition.</h2>
+        <p>Because the system operates as an early-warning tool, explaining <em>why</em> the probability is elevated is as operationally important as the probability itself. Every monthly inference is accompanied by a SHAP (SHapley Additive exPlanations) decomposition across three analysis layers, and each month's full decomposition is now also stored as data, not only as a chart.</p>
+
+        <h3>6.1 — Global feature importance</h3>
+        <p>Ranked by mean absolute SHAP value, the most influential features are the federal funds level (<span class="sc">fedfunds_lvl</span>), housing permits (<span class="sc">permit_yoy</span>) and corporate profits (<span class="sc">corp_profits_yoy</span>), followed by the yield-curve slope (<span class="sc">spread_lvl</span>), initial jobless claims (<span class="sc">icsa_yoy</span>) and housing starts (<span class="sc">houst_yoy</span>). This hierarchy was not encoded manually — the model learned it from the data alone. It is consistent with established macro theory (the cost of capital leads; the real economy confirms), which is reassuring, though not by itself proof of causal structure.</p>
+
+        <figure class="bleed">
+          <div class="img-wrap">
+            <img src="assets/fig-shap-summary-v4.png" alt="SHAP global feature importance summary plot">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 6<br>SHAP summary</div>
+            <div class="text">
+              Mean absolute SHAP contribution across all months, ranked, for the production model. The Fed funds level, housing permits and corporate profits dominate the top of the ranking, followed by the yield-curve slope and labor-market signals.
+              <em>plot shap-summary · dataset E · production XGBoost · feature-set plus</em>
+            </div>
+          </div>
+        </figure>
+
+        <h3>6.2 — Historical timeline</h3>
+        <p>Feature contributions plotted as time series across the full historical record reveal the recession-specific signature of each episode. The 2008 recession shows housing starts and permits contributing sharply from 2006–07, well before the employment data broke. The 1980 and 1981 recessions show the federal funds rate and monetary tightening as the dominant driver. The 2001 episode shows corporate profits and an inverted curve activating while consumer indicators remained relatively contained — the distinctive fingerprint of an equity and capital-expenditure bust.</p>
+
+        <h3>6.3 — Monthly waterfall</h3>
+        <p>For any given month, the SHAP waterfall chart shows the signed contribution of each feature to that month's probability — how much each indicator pushed the estimate above or below the historical base rate. This transforms the black-box probability into an interpretable macroeconomic summary: a decision-maker can identify exactly which sectors are driving the current risk assessment.</p>
+
+        <figure class="bleed">
+          <div class="img-wrap" style="max-width:760px;margin:0 auto">
+            <img src="assets/fig-shap-waterfall-v4.png" alt="SHAP waterfall for the September 2026 prediction">
+          </div>
+          <div class="figcap">
+            <div class="lbl">Fig. 7<br>Waterfall</div>
+            <div class="text" style="font-weight: 400;">
+              SHAP waterfall for September 2026, f(x) = −7.11. Each bar is one feature's signed push toward (red) or away from (blue) recession prediction, applied in sequence to the base rate. The probability is held down by building permits at +4.2% year over year (−1.09), the Fed funds level at 3.63% (−0.91), corporate profits at +26.6% (−0.91), a positively sloped yield curve (−0.84) and housing starts (−0.69). The largest upward push, consumer sentiment at 51.7 (+0.43), is far outweighed: 17 features push up by +2.2 in total, 36 push down by −9.4. The published reading is 1.25%. Consistent with a non-recessionary regime.<br><br><b style="font-weight: 400;">Note:</b> the strict prediction anchor (v2) ensures this month is always the last <em>complete</em> month strictly before the run date.<br><em style="font-weight: 400;">plot shap-waterfall · dataset E · production XGBoost · date 2026-09</em>
+            </div>
+          </div>
+        </figure>
+
+        <h3>6.4 — Fingerprints of past recessions: a regime shift around 2000</h3>
+        <p>Running the waterfall on individual pre-recession months reveals the distinctive macroeconomic signature of each episode — and a structural break in those signatures around the year 2000. Pre-2000 recessions are dominated by classic monetary and capacity-tightening features: the 1989 decomposition is led by <span class="sc">fedfunds_lvl</span>, the 1973 episode by capacity utilization (<span class="sc">tcu_lvl</span>) and business-loan growth at the peak of an overheating cycle. From 2000 onward, that classic signature recedes; <span class="sc">corp_profits_yoy</span> takes over as the single dominant driver.</p>
+
+        <p style="">The model learned this regime shift directly from the data. It is consistent with the macro literature: the post-Volcker monetary regime stabilized inflation, lowered the relative volatility of policy rates, and shifted business-cycle dynamics toward credit and corporate-balance-sheet channels. All panels below are computed with the current production model; the four historical months lie inside its training data, so they show what it <em>learned</em>.</p>
+      </div>
+
+      <!-- 2x2 fingerprint grid: full body width -->
+      <div class="regime-bar">
+        <div class="line"></div>
+        <div class="label">Pre-2000 · Capacity- and Fed-funds-driven</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="fingerprint-grid">
+        <div class="fp-card">
+          <div class="fp-head">
+            <div class="fp-date">September 1989</div>
+            <div class="fp-tag">f(x) = +4.97</div>
+          </div>
+          <div class="fp-img"><img src="assets/fig-waterfall-1989-v4.png" alt="SHAP waterfall, September 1989"></div>
+          <div class="fp-foot">
+            <div class="fp-driver">Top driver — fedfunds_lvl · +1.43</div>
+            <div class="fp-text">Eleven months before the 1990 recession. The Fed funds rate at 8.99% leads, with initial jobless claims (<span class="sc">icsa_yoy</span>, +1.38) close behind and corporate profits (+0.92) confirming. A monetary-policy story.</div>
+          </div>
+        </div>
+
+        <div class="fp-card">
+          <div class="fp-head">
+            <div class="fp-date">February 1973</div>
+            <div class="fp-tag">f(x) = +4.51</div>
+          </div>
+          <div class="fp-img"><img src="assets/fig-waterfall-1973-v4.png" alt="SHAP waterfall, February 1973"></div>
+          <div class="fp-foot">
+            <div class="fp-driver">Top driver — tcu_lvl · +1.54</div>
+            <div class="fp-text">Ten months before the 1973–75 recession. Capacity utilization at 87.8% — a peak-of-cycle overheating reading — leads, followed by business-loan acceleration (+1.02) and the pace of rate hikes (+0.71). A pre-Volcker overheating signature where capacity and credit lead the monetary rate.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="regime-bar">
+        <div class="line"></div>
+        <div class="label">Post-2000 · Credit &amp; corporate-balance-sheet driven</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="fingerprint-grid">
+        <div class="fp-card">
+          <div class="fp-head">
+            <div class="fp-date">February 2007</div>
+            <div class="fp-tag">f(x) = +4.79</div>
+          </div>
+          <div class="fp-img"><img src="assets/fig-waterfall-2007-v4.png" alt="SHAP waterfall, February 2007"></div>
+          <div class="fp-foot">
+            <div class="fp-driver">Top driver — corp_profits_yoy · +1.07</div>
+            <div class="fp-text">Eleven months before the Great Recession. Corporate profits, jobless claims (+1.02), housing permits (+0.72) and housing starts (+0.68) push positive in concert — the housing-and-credit GFC signature. <span class="sc">fedfunds_lvl</span> at 5.25% pulls the probability <em>down</em> (−0.39).</div>
+          </div>
+        </div>
+
+        <div class="fp-card">
+          <div class="fp-head">
+            <div class="fp-date">May 2000</div>
+            <div class="fp-tag">f(x) = +3.54</div>
+          </div>
+          <div class="fp-img"><img src="assets/fig-waterfall-2000-v4.png" alt="SHAP waterfall, May 2000"></div>
+          <div class="fp-foot">
+            <div class="fp-driver">Top driver — corp_profits_yoy · +1.22</div>
+            <div class="fp-text">The first recession of the new regime. Eleven months before the Dot-Com contraction, corporate profits, an inverted curve (<span class="sc">spread_lvl</span>, +1.13) and business-loan growth (+0.82) lead; <span class="sc">fedfunds_lvl</span> at 6.02% contributes only +0.12 — a fraction of its 1989 weight.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-body" style="margin-left:248px;margin-top:32px">
+        <p class="aside" style="width: 600px;">Read across the four panels: the dominant feature shifts from capacity and the funds rate (1973, 1989) to <span class="sc">corp_profits_yoy</span> (2000, 2007). The model is not just picking different signals — it is picking the <em>same</em> hierarchy that the macro regime itself produced.</p>
+      </div>
+
+      <!-- Live predictions: distinct from historical fingerprints -->
+      <div class="regime-bar">
+        <div class="line"></div>
+        <div class="label">What the model sees</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="section-body" style="margin-left:248px;margin-bottom:8px">
+        <p style="width:600px">The four panels above show what the model <em>learned</em> from past recessions. The panel below is different: it is a <em>prediction</em> for a month after the production model's training data ends (January 2019). It shows what the model was signalling, not what it absorbed in training.</p>
+      </div>
+
+      <div class="fingerprint-grid" style="grid-template-columns: minmax(0, 560px); justify-content: center;">
+        <div class="fp-card">
+          <div class="fp-head">
+            <div class="fp-date">March 2025</div>
+            <div class="fp-tag">f(x) = −2.85</div>
+          </div>
+          <div class="fp-img"><img src="assets/fig-waterfall-2025-v4.png" alt="SHAP waterfall, March 2025"></div>
+          <div class="fp-foot">
+            <div class="fp-driver">Top suppressor — corp_profits_yoy · −1.09</div>
+            <div class="fp-text">A live prediction during a period of macro stress that <em>did not</em> become a recession. Corporate profits, business-loan growth (−0.77 and −0.72 on its three-month and annual changes) and the Fed funds level (−0.69) push the probability down; falling consumer sentiment pushes up (+0.87 on its annual change, +0.58 on its level) but is outweighed. The EMA filter never approaches threshold.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Limitations -->
+    <section class="section">
+      <div class="section-tag"><span class="num">07</span>Limitations</div>
+      <div class="section-body">
+        <h2>What the system cannot do — by design.</h2>
+
+        <div class="limcard">
+          <h4>7.1 — The 2001 walk-forward anomaly: caught, but barely</h4>
+          <p>The system detects the 2001 Dot-Com recession in fold 8 (trained through March 1991, plus its recovery year) with 3 months of lead — substantially shorter than at other modern episodes, and the underlying signal never climbs as high as it does at other recessions. The previously-reported v1 “miss” was, mechanically, the confirmed filter discarding a weak-but-genuine signal whose month-to-month variability kept resetting its consecutive-month counter; the EMA's continuous accumulation captures that same signal without requiring uninterrupted threshold exceedance.</p>
+          <p style="margin-top: 10px;">The structural model-level argument behind the weakness remains valid. The 2001 recession was a localized corporate equity bust, not a broad consumer or housing contraction. The most diagnostic features for that type of event — High Yield OAS (from 1996), SLOOS bank tightening (from 1990), capital-goods orders (from 1992) — had recorded at most one recession episode by the time fold 8 was trained. A model that has never observed a “CapEx bust while consumers are healthy” scenario in its training history cannot be expected to produce a strong signal for it. The simple yield-curve benchmark warns five months earlier here (§5.5) — at the price of a two-year false alarm in 2023–24.</p>
+        </div>
+
+        <div class="limcard">
+          <h4>7.2 — The cost of the fixed cutoff: no post-2020 learning</h4>
+          <p>The recession-end cutoff buys deployment/validation identity at a real price, and the price grows every month. v4 extends it by twelve recovery months, but for COVID every one of them falls inside the censor, so the production model's last training observation is still January 2019 — over seven years before the current inference — and it will stay there until NBER dates the end of another recession.</p>
+          <p style="margin-top: 10px;">The model has therefore never seen 2021–2024 — not the post-pandemic inflation surge, not the fastest tightening cycle since Volcker, and, most relevant to reading its current output, not the 2022–23 episode in which a deep and sustained yield-curve inversion, the single most-cited recession indicator, resolved without a recession. A near-miss is the most informative negative in the record, and the production model is trained on none of the recent ones.</p>
+          <p style="margin-top: 10px;">The consequence is visible and directional. In the v3 comparison, live readings were several times higher than under T&minus;24: the July 2026 filtered probability was 2.96% against 0.88%, and the mean monthly reading since September 2024 9.52% against 2.12%. This is not new information about the economy — the inputs are unchanged. It is the removal of a suppression the old cutoff was silently applying, and it should be read as the signal arriving on the same scale as the validated one. Under both cutoffs the signal remains far below the 50% threshold, and no recession is indicated.</p>
+          <p style="margin-top: 10px;">The honest statement of the tradeoff: the system is being asked to recognise a 2026 recession using a feature-to-outcome mapping estimated through January 2019, in exchange for a model whose behaviour is exactly what §5 reports. The limitation has a defined expiry — the cutoff advances at the end of the next recession, and its recovery months follow as their labels resolve — but that expiry arrives, by definition, too late to help with the recession that triggers it.</p>
+        </div>
+
+        <div class="limcard">
+          <h4>7.3 — Two months left in 1983–84</h4>
+          <p>The recovery-month refresh removes the 1984–86 false alarm, but not every crossing. December 1983 (56%) is the first month fold 7 is used, before any recovery label has resolved: nothing the model could legitimately know would have told it the economy had healed. November 1984 (50.05%) followed the Fed's push back toward 11% and a nearly flat curve — close to the configuration Wright identifies as the strongest recession signature. Both are single months. Removing them would mean either giving the model hindsight or adding a persistence rule that delays every genuine warning by a month, so they are disclosed instead.</p>
+        </div>
+
+        <div class="limcard">
+          <h4>7.4 — The Fed funds level is read against the training era</h4>
+          <p><span class="sc">fedfunds_lvl</span> is the model's most important feature (§6.1), and its meaning depends on the rates a model has seen. Fold 7, trained only through the Volcker years, read 8% as danger in 1985; the production model, trained on 1954–2019, reads 4–5% as ordinary, and in 2022–23 the level was the second-largest force holding the signal down (§5.4). Dropping the feature removes the 1985 problem in the walk-forward, but in our tests it also made the live model sit above 50% for every month of 2023. We keep it — Wright (2006) finds the nominal level informative beyond the spread — and flag the dependency: an expansion with persistently higher rates than the training record would be a regime the model has not seen.</p>
+        </div>
+
+        <div class="limcard">
+          <h4>7.5 — Scope</h4>
+          <p>This system produces a single output: the probability that an NBER-defined recession will occur within the next 12 months. It does not forecast recession depth, duration, sector composition, equity-market performance, or GDP growth rates. It is an early-warning signal, not a macroeconomic model.</p>
+        </div>
+
+        <div class="limcard">
+          <h4>7.6 — Feature-selection ceiling</h4>
+          <p>The production feature set was fixed via the Monte Carlo ablation procedure described in §4.5, but that procedure is itself a heuristic. A more exhaustive search — a deeper Monte Carlo budget, or a principled ablation algorithm with stronger statistical guarantees — would almost certainly surface a feature configuration with better out-of-sample behavior than the one shipped here. At the current stage of the work I was not able to achieve those better results; the <span class="sc">plus</span> set is the best configuration recovered under the available compute and search budget, not a proven optimum. The same caution applies to every setting chosen by looking at the walk-forward — threshold, filter, feature set: with six out-of-sample recessions, a backtest can reward luck. The v4 recovery-month choice was made under a pre-committed rule for exactly that reason.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Conclusion -->
+    <section class="section">
+      <div class="section-tag"><span class="num">08</span>Conclusion</div>
+      <div class="section-body">
+        <h2>Architectural honesty over algorithmic complexity.</h2>
+        <p>This project demonstrates that a disciplined, temporally honest machine-learning pipeline can produce a credible and operationally useful early-warning signal for U.S. business cycles. The key contributions are architectural rather than algorithmic:</p>
+
+        <ul class="plain">
+          <li>Walk-forward validation that mirrors deployment chronology: every label is used only once its outcome has resolved (v2.1), and each fold learns from the recovery as those labels arrive (v4) — on final-vintage FRED data by design, with revisions treated as measurement noise.</li>
+          <li>Explicit structural mechanisms against label leakage, retroactive revision, exogenous contamination and publication-lag look-ahead, plus a strict prediction anchor on the production inference.</li>
+          <li>An EMA signal filter that converts raw monthly probabilities into operational alarms in a path-aware way — sensitive to gradual build-ups, robust against isolated spikes.</li>
+          <li>Decisions tested in the open: the recovery-month rule was chosen by a test whose selection rule was committed before it ran, and the model is compared with the literature's standard benchmark through the identical walk-forward.</li>
+          <li>Full SHAP explainability connecting each monthly probability to its macroeconomic drivers, stored month by month as data.</li>
+        </ul>
+
+        <p>The resulting system catches all six countable recessions in its out-of-sample record with an average 11.3 months of warning, ranks months with ROC-AUC 0.948 (PR-AUC 0.813), and has not been above the alarm line without a recession ahead since November 1984 — 10 such months over the whole record, down from 46 under the v3 rule, against 28 for a classic yield-curve model run through the same test. It withstood the most demanding false-positive environment in recent decades — the 2022–23 rate-hike cycle — without the production signal activating. It does this not by being more complex than the yield-curve heuristic, but by being more <em>complete</em>: contextualizing any single signal within the full macroeconomic environment, and translating raw monthly probabilities into operational alarms with a path-aware filter that respects both the integrity of a build-up and the noise of a spike.</p>
+
+        <h3>References</h3>
+        <ul class="plain">
+          <li style="font-size: 9pt; line-height: 1.4;">Davis, J., &amp; Goadrich, M. (2006). The relationship between precision-recall and ROC curves. <em>Proceedings of the 23rd International Conference on Machine Learning</em>.</li>
+          <li style="font-size: 9pt; line-height: 1.4;">Estrella, A., &amp; Mishkin, F. S. (1998). Predicting U.S. recessions: Financial variables as leading indicators. <em>Review of Economics and Statistics</em>, 80(1), 45–61. (NBER Working Paper 5379, 1995.)</li>
+          <li style="font-size: 9pt; line-height: 1.4;">Wright, J. H. (2006). The yield curve and predicting recessions. <em>Finance and Economics Discussion Series</em> 2006-07, Federal Reserve Board.</li>
+          <li style="font-size: 9pt; line-height: 1.4;">Yazdani, A. (2026). Machine learning and deep sequence models for US recession prediction: A redux. Preprints.org, May 2026.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Appendix -->
+    <section class="section">
+      <div class="section-tag"><span class="num">A</span>Technical configuration</div>
+      <div class="section-body">
+        <h2>Appendix: at a glance.</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>Parameter</th><th>Value</th><th>Rationale</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Algorithm</td><td>XGBoost (GPU) · single model</td><td>Best AUC; NaN-native; SHAP-compatible</td></tr>
+              <tr><td>Feature set</td><td>Dataset E · <span class="sc">plus</span> · 57 features</td><td>Ablation-validated</td></tr>
+              <tr><td>Horizon &amp; label</td><td>12 months; 1 if any NBER month in t+1 … t+12</td><td>Standard business-cycle lead time</td></tr>
+              <tr><td>Training cutoff</td><td>Last recession end + 12 recovery months (2021-04)</td><td>Same rows as fold 11's final model</td></tr>
+              <tr><td>Effective last month</td><td>January 2019</td><td>COVID censor covers the recovery months</td></tr>
+              <tr><td>Fold rule</td><td>Trough + up to 12 recovery months, each once resolved</td><td>No look-ahead; every fold sees a recovery</td></tr>
+              <tr><td>COVID exclusion</td><td>Feb 2019 – Apr 2021</td><td>Excluded from training and every metric</td></tr>
+              <tr><td>Imbalance handling</td><td>Class weighting</td><td>No synthetic oversampling</td></tr>
+              <tr><td>Signal filter</td><td>EMA, α = 0.35</td><td>Path-aware; recovers 2001</td></tr>
+              <tr><td>Series alignment</td><td>Monthly +2 mo, quarterly +4 mo</td><td>No publication-lag look-ahead</td></tr>
+              <tr><td>Alarm threshold</td><td>Fixed at 50%</td><td>Minimizes dangerous OOS false-positive streaks</td></tr>
+              <tr><td>Validation</td><td>Expanding walk-forward, 11 folds</td><td>Scored on the published series</td></tr>
+              <tr><td>Explainability</td><td>SHAP — summary, timeline, waterfall</td><td>Stored monthly as data</td></tr>
+              <tr><td>Data source</td><td>FRED API · 47 series</td><td>Cached locally; refreshed monthly</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pills" hidden></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="colophon">
+    <div>
+      <div style="font-family:var(--sans);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Colophon</div>
+      <div>Set in Source Serif 4 and Inter.<br>Code in JetBrains Mono.</div>
+    </div>
+    <div>
+      <div class="credit">Claude, by Anthropic, was used to help with this project.</div>
+      <div style="margin-top:8px">© 2026 Matteo Neirotti · Recession Probability Engine · Version 4.0 · October 2026.</div>
+    </div>
+  </footer>
+
+</div>
+
+</body></html>
